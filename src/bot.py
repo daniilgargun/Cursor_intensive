@@ -12,49 +12,24 @@ from aiogram import Bot, Dispatcher
 from dotenv import load_dotenv
 
 from handlers import setup_handlers
+from logger import setup_logging
 
 
 async def main():
     """Основная функция запуска бота."""
-    # Настройка логирования
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    # Настройка логирования в файлы
+    setup_logging()
     
-    # Загружаем переменные окружения из .env файла (только для локальной разработки)
-    # В продакшене (Railway/Docker) переменные уже установлены в системе
-    if not os.getenv('RAILWAY_ENVIRONMENT'):  # Railway устанавливает эту переменную
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        env_path = os.path.join(project_root, '.env')
-        load_dotenv(env_path)
-        logging.info("Загружены переменные окружения из .env файла")
-    else:
-        logging.info("Обнаружена среда Railway, используем системные переменные окружения")
+    # Загружаем переменные окружения из корня проекта
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env_path = os.path.join(project_root, '.env')
+    load_dotenv(env_path)
     
     # Проверяем наличие токена
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
-    openrouter_key = os.getenv('OPENROUTER_API_KEY')
-    
-    # Диагностика переменных окружения
-    logging.info(f"TELEGRAM_BOT_TOKEN найден: {'Да' if bot_token else 'Нет'}")
-    logging.info(f"OPENROUTER_API_KEY найден: {'Да' if openrouter_key else 'Нет'}")
-    
-    # Показываем все переменные окружения для диагностики (только имена, не значения)
-    env_vars = [key for key in os.environ.keys() if any(keyword in key.upper() for keyword in ['TOKEN', 'KEY', 'API', 'TELEGRAM', 'OPENROUTER'])]
-    logging.info(f"Найденные переменные окружения с ключевыми словами: {env_vars}")
-    
-    # Показываем Railway специфичные переменные
-    railway_vars = [key for key in os.environ.keys() if key.startswith('RAILWAY_')]
-    logging.info(f"Railway переменные: {railway_vars}")
-    
     if not bot_token:
         logging.error("TELEGRAM_BOT_TOKEN не найден в переменных окружения")
-        logging.error("Убедитесь что в Railway в разделе Variables добавлена переменная TELEGRAM_BOT_TOKEN")
         sys.exit(1)
-        
-    if not openrouter_key:
-        logging.warning("OPENROUTER_API_KEY не найден - LLM функционал не будет работать")
     
     logging.info("LLM Consultant Bot starting...")
     
@@ -68,10 +43,17 @@ async def main():
     try:
         logging.info("Бот запущен и готов к работе")
         await dp.start_polling(bot)
+    except KeyboardInterrupt:
+        logging.info("Получен сигнал остановки")
     except Exception as e:
-        logging.error(f"Ошибка при запуске бота: {e}")
+        logging.error(f"Критическая ошибка при работе бота: {e}")
+        raise
     finally:
-        await bot.session.close()
+        try:
+            await bot.session.close()
+            logging.info("Бот остановлен")
+        except Exception as e:
+            logging.error(f"Ошибка при закрытии сессии бота: {e}")
 
 
 if __name__ == "__main__":

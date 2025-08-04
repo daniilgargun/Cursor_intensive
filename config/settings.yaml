@@ -1,0 +1,30 @@
+# Конфигурация LLM-ассистента для первичной консультации
+# Основные настройки бота и LLM
+
+bot:
+  name: "LLM Consultant"
+  description: "Консультант по услугам компании. Все ответы формулируются в формате markdown2 для Telegram."
+  version: "1.0.0"
+
+llm:
+  # Модель через OpenRouter
+  model: "google/gemini-2.0-flash-exp:free"
+  max_tokens: 1000
+  temperature: 0.7
+  # Максимальное количество сообщений в истории диалога
+  history_limit: 6  # 3 пары (user + assistant)
+  # Таймауты и обработка ошибок
+  timeout_seconds: 30
+  max_retries: 2
+  retry_delay_seconds: 1
+
+logging:
+  level: "INFO"
+  format: "json"
+  # Автоматическая ротация по дням реализована в logger.py
+
+# Настройки для будущих итераций
+features:
+  conversation_memory: true
+  error_fallback: true
+  typing_indicator: true

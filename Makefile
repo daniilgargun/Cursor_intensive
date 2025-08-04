@@ -41,8 +41,10 @@ test:
 	docker run --rm \
 		--env-file .env \
 		-v ./tests:/app/tests \
+		-v ./src:/app/src \
+		-v ./config:/app/config \
 		llm-consultant \
-		python -m pytest tests/
+		bash -c "pip install pytest && python -m pytest tests/ -v"
 
 clean:
 	docker stop llm-consultant || true
