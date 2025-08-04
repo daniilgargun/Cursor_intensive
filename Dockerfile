@@ -17,7 +17,7 @@ RUN mkdir -p logs config
 
 # Копирование исходного кода
 COPY src/ ./src/
-COPY src/.env ./src/.env
+
 
 # Запуск приложения
 CMD ["python", "src/bot.py"]
