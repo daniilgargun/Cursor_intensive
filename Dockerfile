@@ -17,7 +17,7 @@ RUN mkdir -p logs config
 
 # Копирование конфигурационных файлов
 COPY config/ ./config/
-COPY .env .
+# COPY .env .
 
 # Копирование исходного кода
 COPY src/ ./src/
