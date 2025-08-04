@@ -40,6 +40,14 @@ async def main():
     logging.info(f"TELEGRAM_BOT_TOKEN найден: {'Да' if bot_token else 'Нет'}")
     logging.info(f"OPENROUTER_API_KEY найден: {'Да' if openrouter_key else 'Нет'}")
     
+    # Показываем все переменные окружения для диагностики (только имена, не значения)
+    env_vars = [key for key in os.environ.keys() if any(keyword in key.upper() for keyword in ['TOKEN', 'KEY', 'API', 'TELEGRAM', 'OPENROUTER'])]
+    logging.info(f"Найденные переменные окружения с ключевыми словами: {env_vars}")
+    
+    # Показываем Railway специфичные переменные
+    railway_vars = [key for key in os.environ.keys() if key.startswith('RAILWAY_')]
+    logging.info(f"Railway переменные: {railway_vars}")
+    
     if not bot_token:
         logging.error("TELEGRAM_BOT_TOKEN не найден в переменных окружения")
         logging.error("Убедитесь что в Railway в разделе Variables добавлена переменная TELEGRAM_BOT_TOKEN")
