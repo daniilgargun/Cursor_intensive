@@ -13,6 +13,7 @@
 9. [Деплой](#деплой)
 10. [Подход к конфигурированию](#подход-к-конфигурированию)
 11. [Подход к логгированию](#подход-к-логгированию)
+12. [Makefile для автоматизации](#makefile-для-автоматизации)
 
 ---
 
@@ -26,7 +27,8 @@
 ### Инфраструктура и деплой
 - **Docker** - контейнеризация приложения
 - **uv** - управление зависимостями и Python окружениями
-- **Один VPS** - простой деплой на одном сервере
+- **Makefile** - автоматизация команд разработки
+- **Локальный ПК** - разработка и тестирование
 
 ### Тестирование
 - **pytest** - основной фреймворк для тестирования
@@ -92,7 +94,9 @@ llm-consultant/
 ├── tests/                  # Тесты
 │   └── test_*.py
 ├── Dockerfile
+├── Makefile                # Команды для разработки
 ├── pyproject.toml          # uv зависимости и настройки
+├── .env                    # Переменные окружения (создается из .env.example)
 ├── .env.example            # Пример переменных окружения
 └── README.md               # Основной README
 ```
@@ -344,7 +348,22 @@ except Exception:
 - **Docker Desktop** - контейнеризация
 - **Ручной запуск** - без автоматизации
 
-**Процесс запуска:**
+**Процесс запуска через Makefile:**
+```bash
+# Сборка образа
+make build
+
+# Запуск контейнера
+make run
+
+# Остановка
+make stop
+
+# Просмотр логов
+make logs
+```
+
+**Или напрямую через Docker:**
 ```bash
 # Сборка образа
 docker build -t llm-consultant .
@@ -352,9 +371,9 @@ docker build -t llm-consultant .
 # Запуск контейнера
 docker run -d \
   --name llm-consultant \
-  -p 8080:8080 \
   --env-file .env \
   -v ./logs:/app/logs \
+  -v ./config:/app/config \
   llm-consultant
 ```
 
@@ -362,14 +381,34 @@ docker run -d \
 ```dockerfile
 FROM python:3.11-slim
 WORKDIR /app
+
+# Установка uv
+RUN pip install uv
+
+# Копирование файлов зависимостей
 COPY pyproject.toml .
-RUN pip install uv && uv pip install -r pyproject.toml
+
+# Установка зависимостей
+RUN uv pip install --system -r pyproject.toml
+
+# Копирование исходного кода
 COPY src/ ./src/
-COPY config/ ./config/
+
+# Создание папки для логов
+RUN mkdir -p logs
+
+# Запуск приложения
 CMD ["python", "src/bot.py"]
 ```
 
-**Управление:**
+**Управление через Makefile:**
+- `make logs` - просмотр логов
+- `make stop` - остановка
+- `make restart` - перезапуск
+- `make clean` - очистка контейнеров
+- `make test` - запуск тестов
+
+**Или напрямую через Docker:**
 - `docker logs llm-consultant` - просмотр логов
 - `docker stop llm-consultant` - остановка
 - `docker restart llm-consultant` - перезапуск
@@ -393,7 +432,7 @@ CMD ["python", "src/bot.py"]
 **Структура конфигурации:**
 - `config/settings.yaml` - основные настройки бота и LLM
 - `config/prompts.yaml` - системные промпты
-- `.env` - секретные ключи и токены
+- `.env` - секретные ключи и токены (создается из `.env.example`)
 
 **Пример settings.yaml:**
 ```yaml
@@ -516,15 +555,100 @@ def setup_logging():
 
 ---
 
+## Makefile для автоматизации
+
+### Простые команды для разработки
+
+**Структура Makefile:**
+```makefile
+.PHONY: help build run stop restart logs clean test setup
+
+help:
+	@echo "Доступные команды:"
+	@echo "  setup    - Первоначальная настройка проекта"
+	@echo "  build    - Сборка Docker образа"
+	@echo "  run      - Запуск контейнера"
+	@echo "  stop     - Остановка контейнера"
+	@echo "  restart  - Перезапуск контейнера"
+	@echo "  logs     - Просмотр логов"
+	@echo "  test     - Запуск тестов"
+	@echo "  clean    - Очистка контейнеров и образов"
+
+setup:
+	@echo "Настройка проекта..."
+	@mkdir -p logs config
+	@cp .env.example .env || echo "Создайте файл .env по примеру .env.example"
+	@echo "Установите значения в .env файле"
+
+build:
+	docker build -t llm-consultant .
+
+run:
+	docker run -d \
+		--name llm-consultant \
+		--env-file .env \
+		-v ./logs:/app/logs \
+		-v ./config:/app/config \
+		llm-consultant
+
+stop:
+	docker stop llm-consultant || true
+	docker rm llm-consultant || true
+
+restart: stop build run
+
+logs:
+	docker logs -f llm-consultant
+
+test:
+	docker run --rm \
+		--env-file .env \
+		-v ./tests:/app/tests \
+		llm-consultant \
+		python -m pytest tests/
+
+clean:
+	docker stop llm-consultant || true
+	docker rm llm-consultant || true
+	docker rmi llm-consultant || true
+	docker system prune -f
+```
+
+**Основные команды:**
+- `make setup` - первоначальная настройка проекта
+- `make build` - сборка Docker образа
+- `make run` - запуск контейнера
+- `make logs` - просмотр логов в реальном времени
+- `make stop` - остановка и удаление контейнера
+- `make restart` - полный перезапуск (stop + build + run)
+- `make test` - запуск тестов в контейнере
+- `make clean` - полная очистка (контейнеры + образы)
+
+**Принципы:**
+- **Простые команды** - одно действие = одна команда
+- **Автоматизация рутины** - сборка, запуск, тестирование
+- **Совместимость с KISS** - никаких сложных скриптов
+- **Документированность** - `make help` показывает все команды
+
+---
+
 ## Заключение
 
 Данное техническое видение описывает максимально простой подход к созданию LLM-ассистента для первичной консультации клиентов. Все решения направлены на быструю разработку MVP с возможностью последующего улучшения.
 
 **Ключевые принципы:**
-- KISS (Keep It Simple, Stupid)
-- Монолитная архитектура
-- Файловое хранение данных
-- Простые технологии
-- Ручное управление
+- **KISS (Keep It Simple, Stupid)** - простота во всем
+- **Монолитная архитектура** - один сервис
+- **Файловое хранение данных** - без баз данных
+- **Простые технологии** - Python, Docker, YAML
+- **Автоматизация через Makefile** - простые команды
+- **Локальная разработка** - запуск на ПК
+
+**Быстрый старт:**
+1. `make setup` - настройка проекта
+2. Заполнить `.env` файл токенами
+3. `make build` - сборка образа
+4. `make run` - запуск бота
+5. `make logs` - просмотр работы
 
 Данный документ служит основой для начала разработки проекта.
