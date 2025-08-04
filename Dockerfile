@@ -15,9 +15,12 @@ RUN uv pip install --system .
 # Создание необходимых папок
 RUN mkdir -p logs config
 
+# Копирование конфигурационных файлов
+COPY config/ ./config/
+COPY .env .
+
 # Копирование исходного кода
 COPY src/ ./src/
-
 
 # Запуск приложения
 CMD ["python", "src/bot.py"]
