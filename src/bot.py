@@ -22,8 +22,10 @@ async def main():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    # Загружаем переменные окружения
-    load_dotenv()
+    # Загружаем переменные окружения из корня проекта
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env_path = os.path.join(project_root, '.env')
+    load_dotenv(env_path)
     
     # Проверяем наличие токена
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
